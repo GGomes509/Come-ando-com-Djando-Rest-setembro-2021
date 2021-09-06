@@ -1,0 +1,595 @@
+----------------------------+
+      
+      ---Objetivo---
+      
+Obs: Criar um validação de um Aluno com um curso, e mostrar as matriculas que ele esta matriculado.
+Obs: Vou aprender a configurar model, views, serializers, admin, urls que tem um parante routers herdado do Django-Rest
+----------------------------+
+** Preparando ambiente. **
+
+    Além disso, para conseguir acompanhar este curso, é recomendado que você tenha o Python3 instalado.
+
+Para otimizar o tempo do curso, criamos esta atividade descrevendo o passo a passo para criação de um projeto Django. Os passos são:
+
+    Crie uma pasta para manter seu código e acessando essa pasta em um terminal, crie um ambiente virtual com o seguinte comando:
+
+python3 -m venv ./venv
+
+    Ative seu ambiente virtual com o seguinte comando (MAC e Linux):
+
+source venv/bin/activate
+
+Em caso de Windows, utilize o comando:
+
+venv\Scripts\activate.bat
+
+    Instale o Django nesse ambiente virtualizado:
+
+pip install django
+
+    Crie um projeto chamado setup utilizando o Django admin, para manter toda configuração de nossa aplicação:
+
+django-admin startproject setup .
+
+    Para finalizar a configuração do ambiente, na pasta setup, altere no arquivo settings.py o idioma e o horário que usaremos na aplicação, incluindo as seguintes linhas de código:
+
+LANGUAGE_CODE = 'pt-br'
+TIME_ZONE = 'America/Sao_Paulo'
+
+    Na aula 3, vamos utilizar o Postman que é uma ferramenta que tem como objetivo testar serviços da API. Para instalar, clique neste link.
+
+    Em caso de dúvida na instalação ou durante o curso, conte sempre com o fórum da Alura!
+
+Antes
+
+---------------------------------------------------------------+
+Intalar o Django-Rest
+
+01 - pip3 install djangorestframework
+02 - pip3 install markdown <----Ele auxilia o Rest
+Obs: Em INsttlled_apps no arquivo settings colocar--> 'rest_framework' , obs: Não precisa para o markdown.
+
+---------------------------------------------------------------+
+** Criar o modelo **
+
+from django.db import models
+
+
+class Aluno(models.Model):
+
+    nome = models.CharField(max_length=30)
+    rg = models.CharField(max_length=9)
+    cpf = models.CharField(max_length=11)
+    data_nascimento = models.DateField() <--- Colocar um data padrão americano.
+
+    def __str__(self):
+        return self.nome 
+
+class Curso(models.Model):
+
+    NIVEL =(
+        ('B','Básico'),
+        ('I','Intermediário'),
+        ('A','Avançado'),
+    )
+
+    codigo_curso = models.CharField(max_length=10)
+    descricao = models.CharField(max_length=100)
+    nivel = models.CharField(max_length=1, choices=NIVEL, blank=False, null=False, default='B')
+    
+    def __str__(self):
+        return self.descricao
+
+--------------------------------------+
+
+Obs: Na variavel nivel meu objetivo é pode escolher em qual nivel o aluno vai fazer o curso, foi criado:
+
+
+    NIVEL = (
+    
+        ('B','Básico'),
+        ('I','Intermediário'),
+        ('A','Avançado'),
+        
+    )
+
+e no max_legth foi colocado '1' da unica letra que esta representado cada nome por exemplo 'B' para 'Básico', o 'choice' esta recebendo do 'NIVEL', a explicação para o choice esta abaixo, a variavel nivel não pode ser nulo (null-False), de o padrão para nivel vai ser 'B' de Basico (default='B') 
+
+
+Para que serve o choices no Django ?
+
+choices. Um iterável(e.g., uma lista ou tupla) de tupla duplas para usar como escolhas para esse campo. Se fornecido, a administração do Django irá usar uma caixa de seleção (listinha) no lugar de um campo de texto padrão e irá limitar as escolhas as opções dadas.
+
+--------------------------------------+
+
+Colocar no terminal:
+
+python3 manage.py makemigrations
+python3 manage.py mugrate
+
+---------------------------------------------------------------+
+
+** Criar um admin.py **
+
+from django.contrib import admin
+from escola.models import Aluno, Curso 
+
+
+class Alunos(admin.ModelAdmin):
+	list_display = ('id','nome','id','cpf','data_nascimento')
+	list_display_links = ('id','nome')
+	search_fields = ('nome')
+	list_per_page = 20 
+
+admin.site.register(Aluno, Alunos) <--- O 'Aluno' é o modelo, e o 'Alunos' e configuração a classe responsavel.
+
+class Cursos(admin.ModelAdmin):
+	list_display =('id','codigo_curso','descricao')
+	list_display_links =('id','codigo_curso')
+	search_fields =('codigo_curso',)
+
+admin.site.register(Curso, Cursos) <--- O 'Curso' é o modelo, e o 'Cursos' e configuração a classe responsavel.
+
+
+list_display == Serve para dizer quais campos eu quero que apareceça no meu admin.
+list_display_links == Sempre que eu quiser alterar um aluno esteve para min aperta ou no id ou no nome. Olha no codigo o id e nome são exemplos posso colocar qual campa que eu especifiquei no medolo.
+search_fields = É para mim especificar um campo de busca.
+list_per_page = Serve para fazer um paginação, vamos supor que eu tenha cadastrado 500 alunos eu não quero que apareça tudo na mesma pagina.
+
+
+------------------------*
+Criar um usurio de uma senha:
+
+python3 manage.py createsuperuser
+
+---------------------------------------------------------------+
+** Criar um Serializer ** 
+
+[01:16] Então, percebe que agora a gente vai ter de criar uma ponte entre as nossas informações escritas em Python, e as nossas informações escritas em Json. Então, a gente vai precisar fazer ambos: pegar a informação e Python e transformar em Json; pegar a informação em Json, transformar em Python, para salvar no banco de dados, e assim por diante.
+
+[01:36] E quem geralmente tem essa responsabilidade? É um arquivo chamado serializer. Então, isso que eu acabei de falar, é o que o serializer vai fazer. Ele vai pegar essas informações que estão num contexto que o Django entende, escritos em Python, e vai converter essas informações para outro formato, que é o formato que a nossa API vai entender, Json.
+
+
+*Criar um arquivo 'serialazer.py' dentro da aplicação. 
+
+Obs: Ao lado de models.py, urls.py, da aplicação.
+
+
+
+Então, eu tenho o meu aluno serializer. O que eu vou fazer? A gente precisa informar para ele qual é a classe meta que esse nosso serializer vai ter. Ou seja, qual é o modelo que a gente vai utilizar, e quais são os campos. Eu vou deixar “fields”. Quais são os campos e os modelos que a gente vai utilizar.
+
+Codigo:
+
+from rest_framework import sirializers
+from escola.models import Aluno, Curso
+
+class AlunoSerializer(sirializers.ModelSerializer):
+	class Meta:
+		model = Aluno
+		fields = ['id','nome','rg','cpf','data_nacimento']
+
+class CursoSerializer(serializers.ModelSerializer):
+	class Meta:
+		model = Curso
+		fields = '__all__'
+
+Obs: O '__all__' esta dizendo que eu quero todos o canpos da model, e como eu tivese 
+dizendo assim ---> fields = ['id','nome','rg','cpf','data_nacimento']
+
+[05:29] Então, a gente tem aqui um serializador, tanto do aluno, como do curso. E ele vai ser responsável por fazer a ponte da nossa API. E daqui a gente já tem outra lição. Observe que se eu tiro, por exemplo, a data de nascimento, a gente tem, na nossa base de dados, um campo para a data de nascimento.
+
+[05:50] Só que na minha API, eu não tenho esse dado disponível. Então, o serializer vai servir como um filtro dos dados que a gente quer disponibilizar para a API. Ou não. Eu posso disponibilizar todos os dados, ou eu posso colocar todos os dados que eu quero nesse serializer que eu tenho.
+
+---------------------------------------------------------------+
+** Criar uma viewset **
+
+[00:00] Criamos o serializer que permite que dados sejam convertidos para forma Python, nativa, para o RM do Phyton entender, e que sejam facilmente renderizados em Json, XML, ou até outros tipos.
+
+[00:15] No nosso caso, a gente vai manter o padrão Json. Só que, quem vai ser responsável por receber esses dados e selecionar qual é a serialização que a gente vai utilizar, se a gente está recebendo dados Json e quer transformar esses dados para Python nativo para que o nosso programa entenda.
+
+[00:34] Bom, alguém precisa ser responsável por essa atividade. A gente tem o serializador, mas a gente não tem alguém que vai dizer que a gente vai utilizar esse aluno serializer. E quem vai fazer isso vai ser o nosso arquivo “views”.
+
+[01:17] Então, a estrutura “rest” permite que a gente inclua uma abstração para lidar com “viewsets”. O que vai ser um “viewset”? O “viewset” permite que a pessoa que está desenvolvendo a nossa API consiga pensar bem na modelagem de negócios e como a nossa aplicação está se desenvolvendo, sem se preocupar com as interações da API, deixando a construção da URL ser automaticamente criada através das convenções comuns.
+
+Cidigo:
+
+from django.shortcuts import render
+from escola.models import Aluno, Curso
+from rest_framework import viewsets 
+from serializer import AlunoSerializer, CursoSerializer 
+
+class AlunosViewset(viewsets.ModelViewSet):
+	""" Exibindo todos os alunos """
+
+	queryset = Aluno.objects.all()
+	serializer_class = AlunoSerializer 
+
+class CursoViewSet(viewsets.ModelViewSet):
+	""" Exibindo todos os cursos """
+	queryset = Curso.objects.all()
+	serializer_class = CursoSerializer 
+
+Obs: Se eu quise escolher um aluno por data_nacimento ou outra paramento só bastaria eu colocar filter() no lugar de all()
+
+
+---------------------------------------------------------------+
+
+** Criar um Urls **
+
+Obs: O rest_framework oferece um roda default que se chama 'routers'.
+
+Lá no nosso arquivo “urls.py”, no lugar de a gente tem “escola.views”, eu quero trazer os meus viewsets. Eu quero trazer o meu “aluno.viewset”, e quero trazer também o meu “curso.viewset”. Então, “curso.viewset”.
+
+[00:53] Maravilha. Além disso, eu vou precisar de mais uma coisa. Eu vou precisar, para a gente conseguir navegar e utilizar a nossa API no nosso browser, a gente tem uma rota default que é dada pelo Django Rest.
+
+[01:09] Então, o que eu vou fazer? Eu vou trazer essa rota para cá. Eu vou importar lá do Rest Framework, import, routers, e eu vou definir essa rota principal. Então eu vou dizer que router, no singular, ela vai ser igual a “routers.defaultrouter”, e vou criar aqui, executar a nossa função.
+
+Codigo:
+       
+from django.contrib import admin
+from django.urls import path, include
+from escola.views import AlunosViewSet, CursosViewSet 
+from rest_framework import routers 
+
+router = routers.DefaultRouter()
+router.register('alunos',AlunosViewSet, basename="Alunos")
+router.register('cursos',CursosViewSet, sbasename="Cursos")
+
+urlpatterns = [
+    path('admin/', admin.site.urls),
+    path('', include(router.urls))
+]
+
+
+
+Obs: No trecho de codigo 'reoutet = register('alunos', AlunosViewSet, basename='Alunos') o nome 'aluno' é nome do rota que eu coloco no {% url 'aluno'%}
+
+
+---------------------------------------------------------------+
+
+** Como usar o Postman uso simple **
+
+01 - Abro o postman
+02 - Copio o http://127.0.0.1:8000/cursos/ e coloco ao lado do input ao de GEt e aperto 'send' vai aparecer o resultado.
+
+* Para fazer o 'POST' pelo postman
+
+01 -  No lugar que esta o 'GET' mudo para 'POST'.
+02 -  Onde esta 'none' coloco 'raw' 
+03 -  Onde esta 'text' coloco 'JSON'
+
+Na parte que é para colocar texto eu copio a resposta  que foi mostrada antes parecido com essa:
+
+{
+   "codigo_curso": "Direito",
+   "descricao": "O Direito é muito bom, mais dificil.",
+   "nivel": "A"
+}  
+
+Obs: Observe que apaguei do 'id', quando for criar vai ser criado um altomaticamente.
+Obs: Tem que observa que no input esta o url para esse 'json'  que estou fazendo o 'POST'. O carreto para esse é http://127.0.0.1:8000/cursos/
+
+
+
+---------------------------------------------------------------+
+
+Obs: Vou fazer a matricula para liga 'Alunos' e 'Cursos'.
+Obs: Seguindo a ordem que é 'model' depois, 'admin.py' depois, 'serializer' depois, 'views.py' (viewset) depois, urls (routers)
+
+
+**classe alunos e curos em cima
+
+class Matricula(models.Model):
+
+    PERIODO =(
+
+        ('M','Matricula'),
+        ('V','Vespertino'),
+        ('N','Norturno')
+
+    )
+
+    aluno = models.ForeignKey(Aluno, on_delete=models.CASCADE)
+    curso = models.ForeignKey(Curso, on_delete=models.CASCADE)
+    periodo = models.CharField(max_length=1, choices=PERIODO, blank=False, null=False, default='M')
+
+---------------------------------------------------------------+
+
+** Cria um 'admin' para matricula **
+
+Obs: Importar o modelo Matricula
+
+class Matriculas(admin.ModelAdmin):
+	list_display =('id','aluno','curso','periodo')
+	list_display_links =('id',)
+
+admin.site.register(Matricula, Matriculas)
+
+---------------------------------------------------------------+
+
+** Cria uma 'serializer' no arquivo serializer.py dentro da aplicação para matricula **
+
+--em cima tem a viewset de alunos e cursos
+
+Obs: Importar o modelo Matricula
+
+class MatriculaSerializer(serializers.ModelSerializer):
+	class Meta:
+		model = Matricula
+		exclude = [] 
+		
+Obs: O 'exclude' tudo que eu colocar dentro de '[]' vai excluir um campo da model, mais se eu deu '[]' vazia vai aparece todos os campos.
+
+---------------------------------------------------------------+
+
+** Criar uma 'viewset' **
+
+--- Lembrado que encima tem viewset de aluno e curso ---
+
+Obs: Importar o modelo Matricula
+Obs: Importar e o serializador MatriculaSerializer
+
+class MatriculaViewSet(viewsets.ModelViewSet):
+	""" Listado todas as matriculas """
+	queryset = Matricula.objects.all()
+	serializer_class = MatriculaSerializer 
+
+
+---------------------------------------------------------------+
+
+** Criar uma 'viewset' **
+
+Obs: Importar o viewSet  o matriculaViewSet
+
+---lenbrado que tem o configuração de router e as rotas de alunos e cursos.
+
+router.register('matricula', MatriculaViewSet, basename="Matriculas")
+
+---------------------------------------------------------------+
+
+** Aprender como configurar a nossa API de forma que a gente consiga colocar mais informações na nossa URL **
+
+[07:09] Então, o que a gente vai aprender na sequência? Na sequência, a gente vai aprender como configurar a nossa API de forma que a gente consiga colocar mais informações na nossa URL, e a gente tenha o resultado da lista que a gente quer, dos recursos que a gente quer.
+
+[00:00] O que eu quero fazer agora é listar todas as matrículas de um aluno. Então eu quero passar o ID desse aluno/matrículas e eu conseguir visualizar todas as matrículas desse aluno.
+
+[00:12] Então, só para a gente entender, o que eu quero fazer é assim: eu vou ter um aluno. Eu quero passar o ID desse aluno. Vamos supor que o ID desse aluno seja o dois, e eu quero passar, por exemplo, escrito “matrículas”. E quando der um enter nessa rota aqui, e perceba que agora ela não existe, eu quero visualizar as matrículas desse aluno, os cursos, nome dos cursos, e quais períodos esse aluno vai fazer esses cursos. 
+
+[00:58] Então, o que eu vou fazer? Vou criar um serializer para ter a responsabilidade apenas listar as matrículas desse aluno. Então eu vou criar uma classe, vou chamar de “lista matrículas aluno serializer”. Legal? E agora eu vou passar a mesma propriedade que a gente já tinha, que é o “serializers.modelserializer”.
+
+** Para isso Vou configurar o serializer.py, a views.py (viewset) e a urls.py 
+
+
+-------------------------------*
+
+*** serializer.py ***
+
+class ListaMatriculaAlunoSerializer(serializers.ModelSerializer):
+	class Meta:
+		model= Matricula
+		fields = ['curso','periodo']
+
+-------------------------------*
+		
+*** views.py ***
+
+--- importar: ListaMatriculaAlunoSerializer
+
+___Lenbrando que tem outras classes de aluno, curso, matricula___
+
+Codigo:
+
+class ListaMatriculaAluno(generics.ListAPIView):
+
+	"""Listado as matrículas de um aluno ou aluna"""
+	def get_queryset(self):
+		queryset = Matricula.objects.filter(aluno_id=self.kwargs['pk'])
+		return queryset
+	serializer_class = ListaMatriculaAlunoSerializer
+
+
+
+[02:50] Então a gente quer pegar as informações que estão no banco e listar. A gente não quer informações de deletar, atualizar. Não. A gente só quer listar essas informações. Então, o que eu vou fazer? Eu vou criar uma classe, que eu vou chamar de “class lista matrículas aluno”. E agora eu vou passar um argumento diferente, que vai ser o “generic list api view”.
+
+[03:27] Então, só para a gente ver como a gente importa esse nosso “genérico list api view”, é assim: lá do nosso Rest Framework, que a gente tem o viewset, eu vou trazer o “generics”. E aqui dentro eu vou usar “generics.listapiview”. [03:46] Passei uma propriedade diferente agora para esse argumento. O que eu vou fazer agora? Agora que eu tenho esse meu “list api view”, eu vou colocar um docstring só para deixar padronizado. Então “listando as matrículas de um aluno ou aluna”. Legal.
+
+[04:06] Eu vou fazer o seguinte: a primeira coisa que a gente vai ter que fazer é pensar assim: observa que eu estou passando o ID desse meu aluno. Está vendo? Eu estou passando esse ID. De alguma forma, a gente tem que pegar esse ID e falar que o aluno que a gente quer listar as matrículas é esse.
+
+[04:22] Então, aqui vou criar uma função, que eu vou chamar de “get_queryset”. E, como argumentou, eu vou passar o self. Porque, dependendo da requisição que vier, a gente vai passar o valor da instância que a gente está utilizando. Legal?
+
+[04:45] Então, “get_queryset”, e vou dizer da mesma forma que a gente fazia para o outro: que o “queryset” vai ser igual à “matrícula.objects.filter”. Por quê? Eu quero filtrar, de todas as matrículas, a matrícula que tenha o ID desse aluno.
+
+[05:06] Então, eu vou falar assim, que o “aluno_id”, que é o nosso aluno lá do nosso modelo do banco de dados, ele vai ser igual à “self.karms”. Então a gente vai passar o “kwargs”, e aqui dentro, através dos colchetes, eu vou passar PK.
+
+[05:27] Então, o que eu estou fazendo? Para conseguir recuperar esse dois desse meu aluno, eu criei uma função chamada “get_queryset”, que vou filtrar, dizendo que o “aluno_id” vai ser esse aluno dessa requisição que eu estou passando.
+
+[05:43] E, para finalizar, vou dar um return, “queryset”. Legal. E o que a gente faz também, quando a gente define o nosso “queryset”? A gente passa o “serializer class”, que vai ser o “lista matrículas alunos serializer”. Ficou esse nome bem grandão.
+
+[06:03] Beleza. Criei aqui o meu “generic list api view”, falei para ele qual é o “queryset”, e qual é o serializer class, e o que a gente vai fazer agora vai ser registrar a nossa URL. E eu quero registrar da mesma forma que a gente tem aqui: aluno, o ID do aluno e a matrícula.
+
+-------------------------------*
+
+** urls.py **
+
+--importar a views ListaMatriculaAluno 
+
+colocar dentro urlpatterns = [ obs: junto com os outros, 
+                               path('aluno/<int:pk>/matriculas/',ListaMatriculaAluno.as_view())
+                               
+                               ]
+                               
+Colocar no input de URL do navegado: 127.0.0.1:8000/aluno/1/matriculas/
+---------------------------------------------------------------+
+
+** Alterar o resultado que esta aparecendo no navegador. **
+
+[08:04] A gente conseguiu a “lista matrículas aluno”, listando matrículas de um aluno ou aluna. Beleza. E a gente tem essas informações. Para a gente deixar mais legal, e mais visível o que a gente está vendo, o curso dois, período N. Seria legal se fosse o nome do curso dois, e o período fosse noturno.
+
+[08:20] Então vamos alterar isso. A gente vai fazer isso onde? Lá no nosso serializer. O que eu vou fazer? Eu vou dizer que o curso, ele vai ser do tipo “serializers.readonlyfield”, ou seja, a gente quer ler os recursos desse nosso curso, e vou passar com o source para ele, do tipo “curso.descrição”.
+
+
+* serializer.py
+
+class ListaMatriculaAlunoSerializer(serializers.ModelSerializer):
+
+        aluno = serializers.ReadOnlyField(source='aluno.nome')  <----Novo
+	curso = serializers.ReadOnlyField(source='curso.descricao')  <----Novo
+	periodo = serializers.SerializerMethodField()  <---------------Novo   
+	
+ 	class Meta:
+		model= Matricula
+		fields = ['curso','periodo']
+	def get_periodo(self, obj):  <--------------------Novo
+		return obj.get_periodo_display()
+		
+[08:20] Então vamos alterar isso. A gente vai fazer isso onde? Lá no nosso serializer. O que eu vou fazer? Eu vou dizer que o curso, ele vai ser do tipo “serializers.readonlyfield”, ou seja, a gente quer ler os recursos desse nosso curso, e vou passar com o source para ele, do tipo “curso.descrição”.
+[08:58] O que eu fiz aqui? Olha só. A gente tem o ID da matrícula, certo? E a gente tem na matrícula o ID do curso. E eu estou falando que o curso vai ser do tipo de leitura, apenas leitura, esse campo, e a gente quer representar ele através da descrição dele.
+
+[09:16] Então, se a gente olhar lá no nosso admin, a descrição está assim: curso de Django avançado, curso de Rest Framework. É isso o que a gente quer exibir. Então, coloquei aqui, “curso.descrição”. Só que aqui vai precisar ser uma string, está bom?
+
+[09:30] Legal. Outra coisa que eu quero fazer é o meu período. Então vamos fazer assim. O período vai ser do tipo serializer, só que eu quero serializer diferente. Eu quero o método que vai ser exibido aqui, eu quero o mesmo método que está sendo usado aqui também.
+
+[09:47] Então, no período, em vez de mostrar N e M, eu quero visualizar o que está escrito naquele campo. Então, eu vou utilizar uma função chamada “serializer method field”. E vou executar essa nossa função. Então a gente tem um curso período, e eu estou executando essa função aqui. Legal?
+
+[10:10] Então, se eu salvar isso aqui, abrir o meu servidor, e parece que a gente não tem nenhum erro, se eu voltar aqui e atualizar, a gente tem uma mensagem de erro, porque ele não conseguiu pegar o “get_período”.
+
+[10:21] Sabe por que isso acontece? Porque, aqui no período, a gente falou que o período vai ser do “serializer method field”. A gente vai ter um método para buscar o período correto.
+
+[10:33] Mas cadê esse método? A gente não criou. Então, vamos criar. Vou colocar aqui, vou criar um método def, vou chamar de “get_período”, e aqui dentro eu vou passar duas propriedades. A instância que a gente está utilizando com o self, e o nosso objeto. Vou chamar OBJ.
+
+[10:53] Eu vou pedir para ele retornar para a gente o objeto que a gente está utilizando “.get_período_display”. Ou seja, da mesma forma que você exibir o período lá no admin, eu quero que você exiba o período aqui também, na nossa API.
+---------------------------------------------------------------+
+
+** Agora que a gente consegue listar todas as matrículas de um aluno, eu quero fazer o oposto: eu quero listar todos os alunos matriculados em um curso.
+
+*serializer.py
+
+class ListaAlunosMatriculadosSerializer(serializers.ModelSerializer):
+	aluno_nome = serializers.ReadOnlyField(source='aluno.nome')
+	class Meta:
+		model = Motricula
+		fields = ['aluno_nome']
+		
+		
+*views.py
+
+class ListaAlunoMatriculados(generics.ListAPIView):
+	def get_queryset(self):
+		queryset = Matricula.objects.filter(curso_id=self.kwargs['pk'])
+		return queryset
+	serializer_class = ListaMatriculaAlunoSerializer
+	
+
+* urls.py
+
+from django.contrib import admin
+from django.urls import path, include
+from escola.views import(
+                          AlunosViewSet, 
+                          CursosViewSet, 
+                          MatriculaViewSet, 
+                          ListaMatriculaAluno,
+                          ListaAlunoMatriculados <----Novo
+                          )
+from rest_framework import routers
+
+router = routers.DefaultRouter()
+router.register('alunos', AlunosViewSet, basename='Alunos')
+router.register('cursos', CursosViewSet, basename='Cursos')
+router.register('matriculas', MatriculaViewSet, basename='Matriculas')
+
+
+urlpatterns = [
+    path('admin/', admin.site.urls),
+    path('', include(router.urls)),
+    path('aluno/<int:pk>/matriculas/', ListaMatriculaAluno.as_view()),
+    path('curso/<int:pk>/matriculas/', ListaAlunoMatriculados.as_view()) <----Novo
+]
+
+	
+
+---------------------------------------------------------------+
+
+** Autentificação **
+
+rom django.shortcuts import render
+from escola.models import Aluno, Curso, Matricula
+from rest_framework import viewsets, generics 
+from escola.serializer import(
+                               AlunoSerializer, 
+                               CursoSerializer, 
+                               MatriculaSerializer, 
+                               ListaMatriculaAlunoSerializer,
+                               ListaAlunosMatriculadosSerializer
+                             )
+from rest_framework.authentication import BasicAuthentication  <------Novo
+from rest_framework.permissions import IsAuthenticated  <------Novo
+
+class AlunosViewSet(viewsets.ModelViewSet):
+	queryset = Aluno.objects.all()
+	serializer_class  = AlunoSerializer
+	authentication_classes = [BasicAuthentication] <------Novo
+	permission_classes = [IsAuthenticated]<---------Novo
+
+class CursosViewSet(viewsets.ModelViewSet):
+	queryset = Curso.objects.all()
+	serializer_class  = CursoSerializer
+	authentication_classes = [BasicAuthentication]<------Novo
+	permission_classes = [IsAuthenticated]<--------Novo
+
+class MatriculaViewSet(viewsets.ModelViewSet):
+	queryset = Matricula.objects.all()
+	serializer_class = MatriculaSerializer
+	authentication_classes = [BasicAuthentication]<------Novo
+	permission_classes = [IsAuthenticated]<--------Novo
+
+class ListaMatriculaAluno(generics.ListAPIView):
+	def get_queryset(self):
+		queryset = Matricula.objects.filter(aluno_id=self.kwargs['pk'])
+		return queryset
+	serializer_class = ListaMatriculaAlunoSerializer
+	authentication_classes = [BasicAuthentication]<------Novo
+	permission_classes = [IsAuthenticated]<--------Novo
+
+
+class ListaAlunoMatriculados(generics.ListAPIView):
+	"""Listando alunos matriculados em um curso"""
+	def get_queryset(self):
+		queryset = Matricula.objects.filter(curso_id=self.kwargs['pk'])
+		return queryset
+	serializer_class =  ListaAlunosMatriculadosSerializer
+	authentication_classes = [BasicAuthentication]<------Novo
+	permission_classes = [IsAuthenticated]<--------Novo
+
+
+Obs: Auth > type > Basic Auth > Colocar o usurio e a senha que eu criei no 'create super user'.
+
+
+---------------------------------------------------------------+
+---------------------------------------------------------------+
+---------------------------------------------------------------+
+---------------------------------------------------------------+
+---------------------------------------------------------------+
+---------------------------------------------------------------+
+---------------------------------------------------------------+
+---------------------------------------------------------------+
+---------------------------------------------------------------+
+---------------------------------------------------------------+
+---------------------------------------------------------------+
+---------------------------------------------------------------+
+---------------------------------------------------------------+
+---------------------------------------------------------------+
+---------------------------------------------------------------+
+---------------------------------------------------------------+
+---------------------------------------------------------------+
+---------------------------------------------------------------+
+---------------------------------------------------------------+
+---------------------------------------------------------------+
+---------------------------------------------------------------+
+---------------------------------------------------------------+
+---------------------------------------------------------------+
+---------------------------------------------------------------+
+---------------------------------------------------------------+
+---------------------------------------------------------------+
+---------------------------------------------------------------+
+
